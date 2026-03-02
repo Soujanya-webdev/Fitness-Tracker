@@ -1369,6 +1369,10 @@
       <!-- TODAY'S WORKOUT -->
       <div class="today-card">
         <div class="today-title">TODAY'S TRAINING SESSION</div>
+        <div style="margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span id="active-plan-badge" style="display:none;background:rgba(0,255,135,0.12);border:1px solid rgba(0,255,135,0.3);border-radius:100px;padding:6px 14px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:2px;color:var(--accent);text-transform:uppercase;"></span>
+          <button id="clear-plan-btn" onclick="clearActivePlan()" style="display:none;background:transparent;border:1px solid var(--border);border-radius:100px;padding:5px 12px;font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1px;color:var(--text3);cursor:pointer;transition:.2s;" onmouseover="this.style.borderColor='var(--accent4)';this.style.color='var(--accent4)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">✕ Clear Plan</button>
+        </div>
         <div class="workout-phase">
           <div class="phase-header">
             <div class="phase-dot" style="background:#ff9500"></div>
@@ -1628,7 +1632,7 @@
     <div class="popup-title" id="popup-title">HYDRATION BREAK</div>
     <div class="popup-msg" id="popup-msg">Take a sip of water. Staying hydrated keeps your power output high and reduces fatigue.</div>
     <div class="popup-fact" id="popup-fact">🔬 Science: Dehydration reduces performance by up to 15%</div>
-    <button class="popup-close" onclick="closePopup()">CONTINUE TRAINING →</button>
+    <button class="popup-close" id="popup-close-btn" onclick="closePopup()">CONTINUE TRAINING →</button>
   </div>
 </div>
 
@@ -1666,6 +1670,42 @@ const plans = [
   {name:'Muscle & Power Builder',icon:'💪',color:'blue',desc:'Progressive overload plan for building functional strength and muscle.',days:5,total:'65 min/day',schedule:['Push Day','Pull Day','Leg Day','Rest Day 😴','Full Body Power','Athletic Conditioning','Rest Day 😴']},
   {name:'Home Warrior',icon:'🏠',color:'red',desc:'Zero equipment. Maximum results. Full workout plan you can do anywhere.',days:7,total:'40 min/day',schedule:['Bodyweight Circuit','Yoga & Mobility','Push Workout','Rest Day 😴','HIIT Cardio','Pull & Core','Stretch & Recovery']},
 ];
+
+// Exercises for each plan keyed by plan name
+const planExercises = {
+  '7-Day Beginner Kickstart': [
+    {name:'Bodyweight Squats',   detail:'3×15 reps',  emoji:'🦵'},
+    {name:'Knee Push-ups',       detail:'3×10 reps',  emoji:'💪'},
+    {name:'Plank Hold',          detail:'3×20 sec',   emoji:'🧘'},
+    {name:'Glute Bridges',       detail:'3×15 reps',  emoji:'🍑'},
+    {name:'Standing March',      detail:'2×40 steps', emoji:'🚶'},
+    {name:'Child\'s Pose Stretch',detail:'2×30 sec',  emoji:'🙇'},
+  ],
+  'Fat Burn Blitz': [
+    {name:'Burpees',             detail:'5×10 reps',  emoji:'🔥'},
+    {name:'Jump Squats',         detail:'4×15 reps',  emoji:'⬆️'},
+    {name:'Mountain Climbers',   detail:'4×40 sec',   emoji:'🧗'},
+    {name:'High Knees',          detail:'5×30 sec',   emoji:'🏃'},
+    {name:'Jumping Jacks',       detail:'3×60 sec',   emoji:'⭐'},
+    {name:'Sprint Intervals',    detail:'6×20 sec',   emoji:'⚡'},
+  ],
+  'Muscle & Power Builder': [
+    {name:'Push-ups',            detail:'4×15 reps',  emoji:'💪'},
+    {name:'Pull-ups',            detail:'4×Max reps', emoji:'🦅'},
+    {name:'Bulgarian Split Squat',detail:'3×10 each', emoji:'🦵'},
+    {name:'Romanian Deadlift',   detail:'4×8 reps',   emoji:'🏋️'},
+    {name:'Diamond Push-ups',    detail:'3×12 reps',  emoji:'💎'},
+    {name:'Box Jumps',           detail:'4×8 reps',   emoji:'📦'},
+  ],
+  'Home Warrior': [
+    {name:'Bodyweight Circuit',  detail:'4 rounds',   emoji:'🏠'},
+    {name:'Tricep Dips (Chair)', detail:'3×12 reps',  emoji:'💺'},
+    {name:'Lateral Lunges',      detail:'3×10 each',  emoji:'↔️'},
+    {name:'Plank to Push-up',    detail:'3×8 reps',   emoji:'🧘'},
+    {name:'Reverse Lunges',      detail:'3×12 each',  emoji:'🦵'},
+    {name:'Superman Hold',       detail:'3×30 sec',   emoji:'🦸'},
+  ],
+};
 
 const popups = [
   {icon:'💧',title:'HYDRATION BREAK',msg:'Take 2–3 big sips of water now. Staying hydrated keeps your power output high.',fact:'🔬 Science: 2% dehydration drops performance by up to 15%'},
@@ -1716,6 +1756,7 @@ function showPage(page){
   window.scrollTo(0,0);
   if(page === 'session') initSession();
   if(page === 'dashboard') updateDashboard();
+  if(page === 'plans') renderPlans();
 }
 
 function selectSport(sport){
@@ -1824,8 +1865,25 @@ function updateDashboard(){
 }
 
 function renderMainWorkout(){
-  const goal = userData ? userData.goal : 'General Fitness';
-  const exs = workoutsByGoal[goal] || workoutsByGoal['General Fitness'];
+  const activePlan = localStorage.getItem('apexCurrentPlan');
+  let exs, sourceLabel;
+  if(activePlan && planExercises[activePlan]){
+    exs = planExercises[activePlan];
+    sourceLabel = activePlan;
+  } else {
+    const goal = userData ? userData.goal : 'General Fitness';
+    exs = workoutsByGoal[goal] || workoutsByGoal['General Fitness'];
+    sourceLabel = null;
+  }
+  const planBadgeEl = document.getElementById('active-plan-badge');
+  const clearBtnEl = document.getElementById('clear-plan-btn');
+  if(planBadgeEl){
+    planBadgeEl.style.display = sourceLabel ? 'inline-flex' : 'none';
+    if(sourceLabel) planBadgeEl.textContent = '📋 ' + sourceLabel;
+  }
+  if(clearBtnEl){
+    clearBtnEl.style.display = sourceLabel ? 'inline-block' : 'none';
+  }
   const container = document.getElementById('main-exercises');
   container.innerHTML = exs.map(e=>`
     <div class="exercise-item" onclick="toggleExercise(this)">
@@ -1887,12 +1945,19 @@ function initSession(){
   clearInterval(timerInterval);
   timerRunning = false;
   document.getElementById('play-btn').textContent = '▶';
-  const goal = userData ? userData.goal : 'General Fitness';
-  const ws = workoutsByGoal[goal] || workoutsByGoal['General Fitness'];
-  // Build session exercises from workout plan
+  const activePlan = localStorage.getItem('apexCurrentPlan');
+  let ws, label;
+  if(activePlan && planExercises[activePlan]){
+    ws = planExercises[activePlan];
+    label = activePlan.toUpperCase();
+  } else {
+    const goal = userData ? userData.goal : 'General Fitness';
+    ws = workoutsByGoal[goal] || workoutsByGoal['General Fitness'];
+    label = (goal||'General Fitness').toUpperCase() + ' TRAINING';
+  }
   sessionExercises = ws.map((w,i)=>({
     id:i+100, name:w.name.toUpperCase(), emoji:w.emoji,
-    target: goal.toUpperCase() + ' TRAINING',
+    target: label,
     reps:w.detail, timer:30
   }));
   currentExIndex = 0;
@@ -2014,15 +2079,29 @@ function showPopup(){
 
 function closePopup(){
   document.getElementById('popup').classList.remove('show');
+  // Reset button to default
+  const btn = document.getElementById('popup-close-btn');
+  btn.textContent = 'CONTINUE TRAINING →';
+  btn.onclick = closePopup;
   schedulePopup();
 }
+
+function clearActivePlan(){
+  localStorage.removeItem('apexCurrentPlan');
+  renderMainWorkout();
+}
+
 
 // ==================== PLANS ====================
 function renderPlans(){
   const grid = document.getElementById('plans-grid');
-  grid.innerHTML = plans.map(p=>`
-    <div class="plan-card">
-      <div class="plan-header ${p.color}">
+  const activePlan = localStorage.getItem('apexCurrentPlan');
+  grid.innerHTML = plans.map(p=>{
+    const isActive = p.name === activePlan;
+    return `
+    <div class="plan-card" style="${isActive ? 'border-color:var(--accent);box-shadow:0 0 30px rgba(0,255,135,0.1);' : ''}">
+      <div class="plan-header ${p.color}" style="${isActive ? 'position:relative' : ''}">
+        ${isActive ? '<div style="position:absolute;top:16px;right:16px;background:var(--accent);color:#000;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:11px;letter-spacing:2px;padding:4px 10px;border-radius:100px;text-transform:uppercase;">✓ ACTIVE</div>' : ''}
         <span class="plan-icon">${p.icon}</span>
         <div class="plan-name">${p.name}</div>
         <div class="plan-desc">${p.desc}</div>
@@ -2041,17 +2120,35 @@ function renderPlans(){
             </div>
           `).join('')}
         </div>
-        <button class="btn-plan" onclick="startPlan('${p.name}')">Start This Plan →</button>
+        <button class="btn-plan" onclick="startPlan('${p.name}')" style="${isActive ? 'background:var(--bg3);color:var(--text2);cursor:default;' : ''}">
+          ${isActive ? '✓ Currently Active' : 'Start This Plan →'}
+        </button>
       </div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 function startPlan(name){
   if(!userData){showPage('assessment');return;}
-  alert('Plan "' + name + '" activated! Check your Dashboard for daily workouts.');
   localStorage.setItem('apexCurrentPlan', name);
-  showPage('dashboard');
+  // Show confirmation then go to dashboard
+  showPlanConfirmation(name);
+}
+
+function showPlanConfirmation(name){
+  const plan = plans.find(p=>p.name===name);
+  const popup = document.getElementById('popup');
+  document.getElementById('popup-icon').textContent = plan ? plan.icon : '📋';
+  document.getElementById('popup-title').textContent = 'PLAN ACTIVATED!';
+  document.getElementById('popup-msg').textContent = '"' + name + '" is now your active training program. Your dashboard and workout sessions have been updated to match this plan.';
+  document.getElementById('popup-fact').textContent = '💡 Your Today\'s Training and Session exercises now follow this plan';
+  // Override close to go to dashboard
+  const closeBtn = document.getElementById('popup-close-btn');
+  if(closeBtn){
+    closeBtn.onclick = ()=>{ closePopup(); showPage('dashboard'); };
+    closeBtn.textContent = 'GO TO DASHBOARD →';
+  }
+  popup.classList.add('show');
 }
 
 // INIT
